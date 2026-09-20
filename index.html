@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071b33">
+<meta name="description" content="SkyCast - live weather app">
+<link rel="manifest" href="manifest.webmanifest">
+<title>SkyCast Weather</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#fff;background:linear-gradient(145deg,#061426,#0c3554 55%,#087d91);min-height:100vh}button,input{font:inherit}.app{max-width:1100px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.logo{font-size:25px;font-weight:800}.logo span{color:#61e4ff}.actions{display:flex;gap:8px}.btn,.search button{border:0;border-radius:14px;padding:12px 15px;background:#ffffff1c;color:#fff;cursor:pointer}.search{display:flex;gap:8px;margin:20px 0}.search input{flex:1;min-width:0;border:0;outline:0;border-radius:14px;padding:15px;background:#ffffff1c;color:#fff}.search input::placeholder{color:#ffffffaa}.search button{background:#61e4ff;color:#052033;font-weight:700}.card{background:#ffffff14;border:1px solid #ffffff20;backdrop-filter:blur(18px);border-radius:26px;padding:25px;box-shadow:0 15px 45px #0002}.location{font-size:27px;font-weight:800}.muted{opacity:.72}.hero{display:flex;justify-content:space-between;align-items:center;margin-top:25px}.icon{font-size:90px}.temp{font-size:76px;font-weight:800;line-height:1}.condition{font-size:21px;margin-top:10px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}.stat{padding:18px;border-radius:20px;background:#ffffff12}.stat b{display:block;font-size:19px;margin-top:7px}.forecast{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-top:14px}.day{text-align:center;padding:15px 8px;border-radius:18px;background:#ffffff12}.day .wi{font-size:34px;margin:12px 0}.hourly{display:flex;gap:10px;overflow:auto;margin-top:14px;padding-bottom:4px}.hour{min-width:92px;text-align:center;padding:14px 8px;border-radius:18px;background:#ffffff12}.alert{margin:14px 0;padding:15px;border-radius:16px;background:#ff9d0028;border:1px solid #ffca5a66}.hidden{display:none}footer{text-align:center;opacity:.6;padding:28px 0 10px;font-size:13px}.loading{text-align:center;padding:35px}.spin{width:38px;height:38px;border:4px solid #ffffff33;border-top-color:#61e4ff;border-radius:50%;animation:s 1s linear infinite;margin:auto}@keyframes s{to{transform:rotate(360deg)}}@media(max-width:750px){.stats{grid-template-columns:repeat(2,1fr)}.forecast{grid-template-columns:repeat(4,1fr)}.hero{flex-direction:column;text-align:center}.temp{font-size:62px}}@media(max-width:460px){.app{padding:12px}.forecast{grid-template-columns:repeat(2,1fr)}.logo{font-size:21px}.icon{font-size:75px}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="top">
+<div class="logo">☁️ Sky<span>Cast</span></div>
+<div class="actions"><button class="btn" id="unitBtn">°C</button><button class="btn" id="themeBtn">🌙</button><button class="btn" id="locBtn">📍</button><button class="btn" id="refreshBtn">↻</button></div>
+</div>
+<div class="search"><input id="city" placeholder="Search city, e.g. Patna, Delhi, London"><button id="searchBtn">Search</button></div>
+<div id="error" class="alert hidden"></div>
+<div id="loading" class="loading"><div class="spin"></div><p>Loading live weather…</p></div>
+<div id="content">
+<div class="card">
+<div id="location" class="location">Patna, India</div>
+<div id="date" class="muted"></div>
+<div class="hero">
+<div id="icon" class="icon">🌤️</div>
+<div><span id="temp" class="temp">--</span><span id="unit">°C</span><div id="condition" class="condition">Loading…</div><div id="feels" class="muted"></div></div>
+</div>
+</div>
+<div class="stats">
+<div class="stat">💧 Humidity<b id="humidity">--</b></div>
+<div class="stat">💨 Wind<b id="wind">--</b></div>
+<div class="stat">🌧️ Rain chance<b id="rain">--</b></div>
+<div class="stat">🌡️ Pressure<b id="pressure">--</b></div>
+</div>
+<h2>Hourly forecast</h2><div id="hourly" class="hourly"></div>
+<h2>7-day forecast</h2><div id="forecast" class="forecast"></div>
+<div class="stats">
+<div class="stat">🌅 Sunrise<b id="sunrise">--</b></div>
+<div class="stat">🌇 Sunset<b id="sunset">--</b></div>
+<div class="stat">☀️ UV Index<b id="uv">--</b></div>
+<div class="stat">👁️ Visibility<b id="visibility">--</b></div>
+</div>
+</div>
+<footer>SkyCast • Live data from Open-Meteo</footer>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let lat=25.5941,lon=85.1376,place="Patna, India",unit="C",data=null;
+const info=c=>({0:["Clear sky","☀️"],1:["Mainly clear","🌤️"],2:["Partly cloudy","⛅"],3:["Overcast","☁️"],45:["Fog","🌫️"],48:["Rime fog","🌫️"],51:["Light drizzle","🌦️"],53:["Drizzle","🌦️"],55:["Heavy drizzle","🌧️"],61:["Light rain","🌦️"],63:["Rain","🌧️"],65:["Heavy rain","🌧️"],71:["Light snow","🌨️"],73:["Snow","❄️"],75:["Heavy snow","❄️"],80:["Rain showers","🌦️"],81:["Rain showers","🌧️"],82:["Heavy showers","⛈️"],95:["Thunderstorm","⛈️"],96:["Thunderstorm + hail","⛈️"],99:["Heavy thunderstorm","⛈️"]}[c]||["Unknown","🌡️"]);
+function temp(c){return unit==="C"?Math.round(c):Math.round(c*9/5+32)}
+function time(s){return new Date(s).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
+function day(s){return new Date(s+"T12:00").toLocaleDateString([],{weekday:"short"})}
+function msg(s){$("error").textContent=s;$("error").classList.remove("hidden")}
+function clearMsg(){$("error").classList.add("hidden")}
+async function load(){
+ clearMsg();$("loading").classList.remove("hidden");$("content").classList.add("hidden");
+ try{
+ const u=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m,visibility&hourly=temperature_2m,precipitation_probability,weather_code,uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max&forecast_days=7&timezone=auto`;
+ const r=await fetch(u);if(!r.ok)throw Error();
+ data=await r.json();render();
+ }catch(e){msg("Could not load live weather. Check your internet connection and try again.")}finally{$("loading").classList.add("hidden");$("content").classList.remove("hidden")}
+}
+function render(){
+ const c=data.current,w=info(c.weather_code);$("location").textContent=place;$("date").textContent=new Date(c.time).toLocaleDateString([],{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+ $("temp").textContent=temp(c.temperature_2m);$("unit").textContent="°"+unit;$("unitBtn").textContent="°"+unit;$("icon").textContent=w[1];$("condition").textContent=w[0];$("feels").textContent=`Feels like ${temp(c.apparent_temperature)}°${unit}`;
+ $("humidity").textContent=c.relative_humidity_2m+"%";$("wind").textContent=Math.round(c.wind_speed_10m)+" km/h";$("pressure").textContent=Math.round(c.surface_pressure)+" hPa";$("visibility").textContent=(c.visibility/1000).toFixed(1)+" km";
+ let hi=0;for(let i=0;i<data.hourly.time.length;i++){if(Math.abs(new Date(data.hourly.time[i])-new Date(c.time))<Math.abs(new Date(data.hourly.time[hi])-new Date(c.time)))hi=i}
+ $("rain").textContent=(data.hourly.precipitation_probability[hi]??0)+"%";$("uv").textContent=data.hourly.uv_index[hi]??"--";$("sunrise").textContent=time(data.daily.sunrise[0]);$("sunset").textContent=time(data.daily.sunset[0]);
+ $("hourly").innerHTML="";for(let i=hi;i<Math.min(hi+12,data.hourly.time.length);i++){let x=info(data.hourly.weather_code[i]);$("hourly").insertAdjacentHTML("beforeend",`<div class="hour"><b>${time(data.hourly.time[i])}</b><div class="wi">${x[1]}</div><b>${temp(data.hourly.temperature_2m[i])}°</b><div class="muted">${data.hourly.precipitation_probability[i]??0}% 🌧️</div></div>`)}
+ $("forecast").innerHTML="";for(let i=0;i<7;i++){let x=info(data.daily.weather_code[i]);$("forecast").insertAdjacentHTML("beforeend",`<div class="day"><b>${i===0?"Today":day(data.daily.time[i])}</b><div class="wi">${x[1]}</div><b>${temp(data.daily.temperature_2m_max[i])}°</b><div class="muted">${temp(data.daily.temperature_2m_min[i])}°</div><small>${data.daily.precipitation_probability_max[i]??0}% rain</small></div>`)}
+}
+async function search(){
+ const q=$("city").value.trim();if(!q)return;
+ try{clearMsg();$("loading").classList.remove("hidden");$("content").classList.add("hidden");
+ const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json`);
+ const d=await r.json();if(!d.results?.length)throw Error();
+ const p=d.results[0];lat=p.latitude;lon=p.longitude;place=`${p.name}, ${p.country}`;await load();
+ }catch(e){msg("City not found. Try another city.");$("loading").classList.add("hidden");$("content").classList.remove("hidden")}
+}
+$("searchBtn").onclick=search;$("city").onkeydown=e=>{if(e.key==="Enter")search()};
+$("refreshBtn").onclick=load;$("unitBtn").onclick=()=>{unit=unit==="C"?"F":"C";if(data)render()};
+$("themeBtn").onclick=()=>document.body.classList.toggle("light");
+$("locBtn").onclick=()=>navigator.geolocation?.getCurrentPosition(p=>{lat=p.coords.latitude;lon=p.coords.longitude;place="My Location";load()},()=>msg("Location permission was denied. Search for a city instead."));
+load();
+</script>
+</body>
+</html>
